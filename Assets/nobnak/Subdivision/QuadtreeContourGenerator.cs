@@ -1,5 +1,5 @@
 using UnityEngine;
-using nobnak.Subdivision;
+
 
 [ExecuteInEditMode]
 public class QuadtreeContourGenerator : MonoBehaviour {
@@ -15,7 +15,7 @@ public class QuadtreeContourGenerator : MonoBehaviour {
 #endif
 		
 		var image = (Texture2D)GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
-		var quad = new QuadtreeContour(image);
+		var quad = new nobnak.Subdivision.QuadtreeContour(image);
 		_mesh = quad.Build(subdivisionLevel, alphaThreshold);
 		GetComponent<MeshFilter>().mesh = _mesh;
 	}

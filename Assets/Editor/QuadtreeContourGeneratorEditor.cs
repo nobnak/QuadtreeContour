@@ -1,8 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections;
-using nobnak.Subdivision;
-	
+
 [CustomEditor(typeof(QuadtreeContourGenerator))]
 public class QuadtreeContourGeneratorEditor : Editor {
 	private QuadtreeContourGenerator _gen;
