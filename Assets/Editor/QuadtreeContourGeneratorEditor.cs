@@ -20,6 +20,26 @@ public class QuadtreeContourGeneratorEditor : Editor {
 			EditorUtility.SetDirty(_gen);
 		
 		if (invalidated)
-			_gen.Generate();
+			Generate();
+	}
+	
+	void Generate() {
+		var image = (Texture2D)_gen.GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
+		ChangeTextureReadable(image, true);
+
+		var quad = new nobnak.Subdivision.QuadtreeContour(image);
+		var mesh = quad.Build(_gen.subdivisionLevel, _gen.alphaThreshold);
+		_gen.GetComponent<MeshFilter>().mesh = mesh;
+
+		ChangeTextureReadable(image, false);
+	}
+	
+	void ChangeTextureReadable(Texture2D image, bool readable) {
+		var imagePath = AssetDatabase.GetAssetPath(image);
+		var imageImporter = (TextureImporter)TextureImporter.GetAtPath(imagePath);
+		imageImporter.isReadable = readable;
+		AssetDatabase.WriteImportSettingsIfDirty(imagePath);
+		AssetDatabase.ImportAsset(imagePath, ImportAssetOptions.ForceSynchronousImport);
+		AssetDatabase.Refresh();
 	}
 }

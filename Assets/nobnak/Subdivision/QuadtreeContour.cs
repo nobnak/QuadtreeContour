@@ -1,10 +1,11 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 
 namespace nobnak.Subdivision {
 	
-	public class QuadtreeContour {
+	public class QuadtreeContour : System.IDisposable {
 		private Texture2D _img;
 		private float _alphaThreshold;
 		
@@ -118,5 +119,12 @@ namespace nobnak.Subdivision {
 				return x == b.x && y == b.y;
 			}
 		}
+
+		#region IDisposable implementation
+		public void Dispose ()
+		{
+			throw new System.NotImplementedException ();
+		}
+		#endregion
 	}
 }
