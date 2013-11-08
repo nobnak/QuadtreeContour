@@ -25,20 +25,31 @@ public class QuadtreeContourGeneratorEditor : Editor {
 	
 	void Generate() {
 		var image = (Texture2D)_gen.GetComponent<MeshRenderer>().sharedMaterial.mainTexture;
-		ChangeTextureSettings(image, true, TextureImporterFormat.RGBA32);
+		var settings = ChangeTextureSettings(image, true, TextureImporterFormat.RGBA32);
 
 		var quad = new nobnak.Subdivision.QuadtreeContour(image);
 		var mesh = quad.Build(_gen.subdivisionLevel, _gen.alphaThreshold);
 		_gen.GetComponent<MeshFilter>().mesh = mesh;
 
-		ChangeTextureSettings(image, false, TextureImporterFormat.AutomaticCompressed);
+		RestoreTextureSettings(image, settings);
 	}
 	
-	void ChangeTextureSettings(Texture2D image, bool readable, TextureImporterFormat textureFormat) {
+	TextureImporterSettings ChangeTextureSettings(Texture2D image, bool readable, TextureImporterFormat textureFormat) {
 		var imagePath = AssetDatabase.GetAssetPath(image);
 		var imageImporter = (TextureImporter)TextureImporter.GetAtPath(imagePath);
+		var prevsetting = new TextureImporterSettings();
+		imageImporter.ReadTextureSettings(prevsetting);
 		imageImporter.isReadable = readable;
 		imageImporter.textureFormat = textureFormat;
+		AssetDatabase.WriteImportSettingsIfDirty(imagePath);
+		AssetDatabase.ImportAsset(imagePath, ImportAssetOptions.ForceSynchronousImport);
+		AssetDatabase.Refresh();
+		return prevsetting;
+	}
+	void RestoreTextureSettings(Texture2D image, TextureImporterSettings settings) {
+		var imagePath = AssetDatabase.GetAssetPath(image);
+		var imageImporter = (TextureImporter)TextureImporter.GetAtPath(imagePath);
+		imageImporter.SetTextureSettings(settings);
 		AssetDatabase.WriteImportSettingsIfDirty(imagePath);
 		AssetDatabase.ImportAsset(imagePath, ImportAssetOptions.ForceSynchronousImport);
 		AssetDatabase.Refresh();

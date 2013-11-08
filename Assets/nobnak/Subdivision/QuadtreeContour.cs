@@ -14,9 +14,22 @@ namespace nobnak.Subdivision {
 		}
 		
 		public Mesh Build(int recursionLevel, float alphaThreshold) {
+			recursionLevel = recursionLevel <= 0 ? 1 : recursionLevel;
 			_alphaThreshold = Mathf.Clamp01(alphaThreshold);
+			
 			var quads = new List<int>();
-			quads.AddRange(Divide(0, 0, _img.width, _img.height, recursionLevel <= 0 ? 1 : recursionLevel));
+			var smallerSize = Mathf.Min(_img.width, _img.height);
+			var nx = _img.width / smallerSize;
+			var ny = _img.height / smallerSize;
+			for (var y = 0; y < ny; y++) {
+				for (var x = 0; x < nx; x++) {
+					var minx = x * smallerSize;
+					var miny = y * smallerSize;
+					var maxx = minx + smallerSize;
+					var maxy = miny + smallerSize;
+					quads.AddRange(Divide(minx, miny, maxx, maxy, recursionLevel));
+				}
+			}
 			
 			var rWidth = 1f / _img.width;
 			var rHeight = 1f / _img.height;
