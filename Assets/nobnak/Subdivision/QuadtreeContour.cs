@@ -18,7 +18,7 @@ namespace nobnak.Subdivision {
 			_alphaThreshold = Mathf.Clamp01(alphaThreshold);
 			
 			var quads = BuildQuads (recursionLevel);
-			quads = Optimize (quads);
+			//quads = Optimize (quads);
 			return GenerateMesh (quads);
 		}
 
@@ -40,7 +40,36 @@ namespace nobnak.Subdivision {
 		}
 		
 		List<int> Optimize(List<int> quads) {
+			var edge2quads = new Dictionary<IntEdge, Quad>();
+			for (var i = 0; i < quads.Count; i+=4) {
+				var quad = new Quad(quads[i], quads[i+1], quads[i+2], quads[i+3]);
+				Quad jointed = default(Quad);
+				bool found = false;
+				foreach (var e in quad.Edges) {
+					if (!edge2quads.ContainsKey(e)) {
+						edge2quads[e] = quad;
+						continue;
+					}
+					found = true;
+					jointed = edge2quads[e];
+					break;
+				}
+				if (!found)
+					continue;
+				
+				foreach (var e in quad.Edges) {
+					if (edge2quads.ContainsKey(e) && edge2quads[e].Equals(quad))
+						edge2quads.Remove(e);
+				}
+				foreach (var e in jointed.Edges) {
+					if (edge2quads.ContainsKey(e) && edge2quads[e].Equals(jointed))
+						edge2quads.Remove(e);
+				}
+				var merged = Quad.Merge(quad, jointed);
+				
+			}
 			return quads;
+			
 		}
 
 		Mesh GenerateMesh (List<int> quads) {
@@ -169,6 +198,43 @@ namespace nobnak.Subdivision {
 					return false;
 				var cmp = (IntEdge)obj;
 				return cmp.x0 == x0 && cmp.y0 == y0 && cmp.x1 == x1 && cmp.y1 == y1;
+			}
+		}
+		
+		public struct Quad {
+			public int minx, miny, maxx, maxy;
+			
+			public Quad(int minx, int miny, int maxx, int maxy) {
+				this.minx = minx;
+				this.miny = miny;
+				this.maxx = maxx;
+				this.maxy = maxy;
+			}
+			
+			public IEnumerable<IntEdge> Edges { get {
+					yield return Edge0;
+					yield return Edge1;
+					yield return Edge2;
+					yield return Edge3;
+				}
+			}
+			public IntEdge Edge0 { get { return new IntEdge(minx, miny, maxx, miny); } }
+			public IntEdge Edge1 { get { return new IntEdge(minx, miny, minx, maxy); } }
+			public IntEdge Edge2 { get { return new IntEdge(maxx, miny, maxx, maxy); } }
+			public IntEdge Edge3 { get { return new IntEdge(minx, maxy, maxx, maxy); } }
+			
+			public static Quad Merge(Quad q0, Quad q1) {
+				if (q0.Edge0.Equals(q1.Edge3)) {
+					return new Quad(q1.minx, q1.miny, q0.maxx, q0.maxy);
+				} else if (q0.Edge1.Equals(q1.Edge2)) {
+					return new Quad(q1.minx, q1.miny, q0.maxx, q0.maxy);					
+				} else if (q0.Edge2.Equals(q1.Edge1)) {
+					return new Quad(q0.minx, q0.miny, q1.maxx, q1.maxy);
+				} else if (q0.Edge3.Equals(q1.Edge0)) {
+					return new Quad(q0.minx, q0.miny, q1.maxx, q1.maxy);
+				} else {
+					throw new System.InvalidOperationException();
+				}
 			}
 		}
 
