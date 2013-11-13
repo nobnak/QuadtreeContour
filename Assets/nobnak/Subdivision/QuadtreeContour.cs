@@ -17,6 +17,12 @@ namespace nobnak.Subdivision {
 			recursionLevel = recursionLevel <= 0 ? 1 : recursionLevel;
 			_alphaThreshold = Mathf.Clamp01(alphaThreshold);
 			
+			var quads = BuildQuads (recursionLevel);
+			quads = Optimize (quads);
+			return GenerateMesh (quads);
+		}
+
+		List<int> BuildQuads (int recursionLevel) {
 			var quads = new List<int>();
 			var smallerSize = Mathf.Min(_img.width, _img.height);
 			var nx = _img.width / smallerSize;
@@ -30,7 +36,14 @@ namespace nobnak.Subdivision {
 					quads.AddRange(Divide(minx, miny, maxx, maxy, recursionLevel));
 				}
 			}
-			
+			return quads;
+		}
+		
+		List<int> Optimize(List<int> quads) {
+			return quads;
+		}
+
+		Mesh GenerateMesh (List<int> quads) {
 			var rWidth = 1f / _img.width;
 			var rHeight = 1f / _img.height;
 			
@@ -130,6 +143,32 @@ namespace nobnak.Subdivision {
 					return false;
 				var b = (IntVertex)obj;
 				return x == b.x && y == b.y;
+			}
+		}
+		
+		public struct IntEdge {
+			public int x0, y0;
+			public int x1, y1;
+			
+			public IntEdge(int x0, int y0, int x1, int y1) {
+				this.x0 = x0; this.y0 = y0; this.x1 = x1; this.y1 = y1;
+				if (x1 < x0 || (x0 == x1 && y1 < y0))
+					Swap ();
+			}
+			
+			public void Swap() {
+				var tmpX = x0; x0 = x1; x1 = tmpX;
+				var tmpY = y0; y0 = y1; y1 = tmpY;
+			}
+			
+			public override int GetHashCode () {
+				return 229 * (x0 + 151 * (y0 + 277 * (x1 + 347 * y1)));
+			}
+			public override bool Equals (object obj) {
+				if (obj.GetType() != typeof(IntEdge))
+					return false;
+				var cmp = (IntEdge)obj;
+				return cmp.x0 == x0 && cmp.y0 == y0 && cmp.x1 == x1 && cmp.y1 == y1;
 			}
 		}
 
