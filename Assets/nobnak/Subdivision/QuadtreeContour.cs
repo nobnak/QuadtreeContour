@@ -13,17 +13,18 @@ namespace nobnak.Subdivision {
 			this._img = img;
 		}
 		
-		public Mesh Build(int recursionLevel, float alphaThreshold) {
+		public Mesh Build(int recursionLevel, float alphaThreshold, bool optimization) {
 			recursionLevel = recursionLevel <= 0 ? 1 : recursionLevel;
 			_alphaThreshold = Mathf.Clamp01(alphaThreshold);
 			
 			var quads = BuildQuads (recursionLevel);
-			//quads = Optimize (quads);
+			if (optimization)
+				quads = Optimize (quads);
 			return GenerateMesh (quads);
 		}
 
-		List<int> BuildQuads (int recursionLevel) {
-			var quads = new List<int>();
+		List<Quad> BuildQuads (int recursionLevel) {
+			var quads = new List<Quad>();
 			var smallerSize = Mathf.Min(_img.width, _img.height);
 			var nx = _img.width / smallerSize;
 			var ny = _img.height / smallerSize;
@@ -33,16 +34,17 @@ namespace nobnak.Subdivision {
 					var miny = y * smallerSize;
 					var maxx = minx + smallerSize;
 					var maxy = miny + smallerSize;
-					quads.AddRange(Divide(minx, miny, maxx, maxy, recursionLevel));
+					var quad = new Quad(minx, miny, maxx, maxy);
+					quads.AddRange(Divide(quad, recursionLevel));
 				}
 			}
 			return quads;
 		}
 		
-		List<int> Optimize(List<int> quads) {
+		List<Quad> Optimize(List<Quad> quads) {
 			var edge2quads = new Dictionary<IntEdge, Quad>();
-			for (var i = 0; i < quads.Count; i+=4) {
-				var quad = new Quad(quads[i], quads[i+1], quads[i+2], quads[i+3]);
+			for (var i = 0; i < quads.Count; i++) {
+				var quad = quads[i];
 				Quad jointed = default(Quad);
 				bool found = false;
 				foreach (var e in quad.Edges) {
@@ -66,23 +68,25 @@ namespace nobnak.Subdivision {
 						edge2quads.Remove(e);
 				}
 				var merged = Quad.Merge(quad, jointed);
-				
+				quads.Add(merged);
 			}
-			return quads;
+			var uniqQuads = new HashSet<Quad>(edge2quads.Values);
+			return new List<Quad>(uniqQuads);
 			
 		}
 
-		Mesh GenerateMesh (List<int> quads) {
+		Mesh GenerateMesh (List<Quad> quads) {
 			var rWidth = 1f / _img.width;
 			var rHeight = 1f / _img.height;
 			
 			var intVertices = new List<IntVertex>();
 			var triangles = new List<int>();
-			for (int i = 0; i < quads.Count; i+=4) {
-				var minx = quads[i];
-				var miny = quads[i+1];
-				var maxx = quads[i+2];
-				var maxy = quads[i+3];
+			for (int i = 0; i < quads.Count; i++) {
+				var quad = quads[i];
+				var minx = quad.minx;
+				var miny = quad.miny;
+				var maxx = quad.maxx;
+				var maxy = quad.maxy;
 				var vertexIndex = intVertices.Count;
 				triangles.Add(vertexIndex);
 				triangles.Add(vertexIndex + 3);
@@ -120,30 +124,34 @@ namespace nobnak.Subdivision {
 			return mesh;
 		}
 		
-		public int[] Divide(int minx, int miny, int maxx, int maxy, int recursion) {
+		public Quad[] Divide(Quad quad, int recursion) {
+			var minx = quad.minx;
+			var miny = quad.miny;
+			var maxx = quad.maxx;
+			var maxy = quad.maxy;
 			if (recursion == 0) {
 				for (var y = miny; y < maxy; y++) {
 					for (var x = minx; x < maxx; x++) {
 						var c = _img.GetPixel(x, y);
 						if (c.a >= _alphaThreshold)
-							return new int[]{ minx, miny, maxx, maxy };
+							return new Quad[]{ quad };
 					}
 				}
-				return new int[0];
+				return new Quad[0];
 			}
 			
 			var midx = (minx + maxx) >> 1;
 			var midy = (miny + maxy) >> 1;
-			var quad0 = Divide(minx, miny, midx, midy, recursion - 1);
-			var quad1 = Divide(midx, miny, maxx, midy, recursion - 1);
-			var quad2 = Divide(minx, midy, midx, maxy, recursion - 1);
-			var quad3 = Divide(midx, midy, maxx, maxy, recursion - 1);
+			var quad0 = Divide(new Quad(minx, miny, midx, midy), recursion - 1);
+			var quad1 = Divide(new Quad(midx, miny, maxx, midy), recursion - 1);
+			var quad2 = Divide(new Quad(minx, midy, midx, maxy), recursion - 1);
+			var quad3 = Divide(new Quad(midx, midy, maxx, maxy), recursion - 1);
 			var nQuads = quad0.Length + quad1.Length + quad2.Length + quad3.Length;
 			
-			if (quad0.Length == 4 && quad1.Length == 4 && quad2.Length == 4 && quad3.Length == 4)
-				return new int[]{ minx, miny, maxx, maxy };
+			if (quad0.Length == 1 && quad1.Length == 1 && quad2.Length == 1 && quad3.Length == 1)
+				return new Quad[]{ quad };
 			
-			var list = new List<int>(nQuads);
+			var list = new List<Quad>(nQuads);
 			list.AddRange(quad0);
 			list.AddRange(quad1);
 			list.AddRange(quad2);
@@ -194,7 +202,7 @@ namespace nobnak.Subdivision {
 				return 229 * (x0 + 151 * (y0 + 277 * (x1 + 347 * y1)));
 			}
 			public override bool Equals (object obj) {
-				if (obj.GetType() != typeof(IntEdge))
+				if (obj == null || obj.GetType() != typeof(IntEdge))
 					return false;
 				var cmp = (IntEdge)obj;
 				return cmp.x0 == x0 && cmp.y0 == y0 && cmp.x1 == x1 && cmp.y1 == y1;
@@ -235,6 +243,16 @@ namespace nobnak.Subdivision {
 				} else {
 					throw new System.InvalidOperationException();
 				}
+			}
+			
+			public override int GetHashCode () {
+				return 491 * (minx + 1129 * (miny + 131 * (maxx + 859 * maxy)));
+			}
+			public override bool Equals (object obj) {
+				if (obj == null || obj.GetType() != typeof(Quad))
+					return false;
+				var q = (Quad)obj;
+				return q.minx == minx && q.miny == miny && q.maxx == maxx && q.maxy == maxy;
 			}
 		}
 

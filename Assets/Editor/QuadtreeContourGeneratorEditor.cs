@@ -13,6 +13,7 @@ public class QuadtreeContourGeneratorEditor : Editor {
 	public override void OnInspectorGUI() {
 		_gen.subdivisionLevel = EditorGUILayout.IntSlider("Subdivision", _gen.subdivisionLevel, 0, 10);
 		_gen.alphaThreshold = Mathf.Clamp01(EditorGUILayout.FloatField("Alpha Theshold", _gen.alphaThreshold));
+		_gen.optimization = EditorGUILayout.Toggle("Optimization", _gen.optimization);
 		
 		var invalidated = GUILayout.Button("Update");
 		
@@ -28,7 +29,7 @@ public class QuadtreeContourGeneratorEditor : Editor {
 		var settings = ChangeTextureSettings(image, true, TextureImporterFormat.RGBA32);
 
 		var quad = new nobnak.Subdivision.QuadtreeContour(image);
-		var mesh = quad.Build(_gen.subdivisionLevel, _gen.alphaThreshold);
+		var mesh = quad.Build(_gen.subdivisionLevel, _gen.alphaThreshold, _gen.optimization);
 		_gen.GetComponent<MeshFilter>().mesh = mesh;
 
 		RestoreTextureSettings(image, settings);
