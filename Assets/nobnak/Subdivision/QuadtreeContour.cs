@@ -78,6 +78,7 @@ namespace nobnak.Subdivision {
 		Mesh GenerateMesh (List<Quad> quads) {
 			var rWidth = 1f / _img.width;
 			var rHeight = 1f / _img.height;
+			var rSize = 1f / Mathf.Max(_img.width, _img.height);
 			
 			var intVertices = new List<IntVertex>();
 			var triangles = new List<int>();
@@ -108,7 +109,7 @@ namespace nobnak.Subdivision {
 					continue;
 				index2vertex.Add(intVert, vertices.Count);
 				var pos = (Vector3)intVert;
-				vertices.Add(pos);
+				vertices.Add(pos * rSize);
 				uvs.Add(new Vector2(Mathf.Clamp01(pos.x * rWidth), Mathf.Clamp01(pos.y * rHeight)));
 			}
 			var compactTriangles = new List<int>();
